@@ -1,0 +1,78 @@
+%%writefile vectorAdd.cu
+
+#include <stdio.h>
+#include <cuda_runtime.h>
+
+#define N 1000000   // Large vector size
+
+// CUDA Kernel
+__global__ void vectorAdd(int *A, int *B, int *C, int n) {
+
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (i < n) {
+        C[i] = A[i] + B[i];
+    }
+}
+
+int main() {
+
+    int *h_A, *h_B, *h_C;
+
+    // Allocate memory on CPU
+    h_A = (int*)malloc(N * sizeof(int));
+    h_B = (int*)malloc(N * sizeof(int));
+    h_C = (int*)malloc(N * sizeof(int));
+
+    // Initialize vectors
+    for (int i = 0; i < N; i++) {
+        h_A[i] = i;
+        h_B[i] = i * 2;
+    }
+
+    int *d_A, *d_B, *d_C;
+
+    // Allocate memory on GPU
+    cudaMalloc((void**)&d_A, N * sizeof(int));
+    cudaMalloc((void**)&d_B, N * sizeof(int));
+    cudaMalloc((void**)&d_C, N * sizeof(int));
+
+    // Copy data CPU -> GPU
+    cudaMemcpy(d_A, h_A, N * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, h_B, N * sizeof(int), cudaMemcpyHostToDevice);
+
+    // Block and Grid size
+    int blockSize = 256;
+    int gridSize = (N + blockSize - 1) / blockSize;
+
+    // Launch kernel
+    vectorAdd<<<gridSize, blockSize>>>(d_A, d_B, d_C, N);
+
+    // Wait for GPU
+    cudaDeviceSynchronize();
+
+    // Copy result GPU -> CPU
+    cudaMemcpy(h_C, d_C, N * sizeof(int), cudaMemcpyDeviceToHost);
+
+    // Print first 10 results
+    printf("First 10 Results:\n");
+
+    for (int i = 0; i < 10; i++) {
+        printf("%d + %d = %d\n", h_A[i], h_B[i], h_C[i]);
+    }
+
+    // Free GPU memory
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    // Free CPU memory
+    free(h_A);
+    free(h_B);
+    free(h_C);
+
+    return 0;
+}
+
+!nvcc vectorAdd.cu -o vectorAdd
+!./vectorAdd

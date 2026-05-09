@@ -1,0 +1,205 @@
+# ==========================================
+# Fashion MNIST Classification using CNN
+# ==========================================
+
+# Import Libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Train-Test Split and Evaluation
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report
+
+# TensorFlow / Keras
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import (
+    Conv2D,
+    MaxPooling2D,
+    Flatten,
+    Dense,
+    Dropout
+)
+from tensorflow.keras.utils import to_categorical
+
+# ==========================================
+# 1. Load Dataset
+# ==========================================
+
+# Load training and testing datasets
+train_df = pd.read_csv("fashion-mnist_train.csv")
+test_df = pd.read_csv("fashion-mnist_test.csv")
+
+# Display first 5 rows
+print(train_df.head())
+
+# ==========================================
+# 2. Separate Features and Labels
+# ==========================================
+
+# First column = label
+y_train = train_df.iloc[:, 0]
+X_train = train_df.iloc[:, 1:]
+
+y_test = test_df.iloc[:, 0]
+X_test = test_df.iloc[:, 1:]
+
+# ==========================================
+# 3. Normalize Pixel Values
+# ==========================================
+
+# Pixel values range from 0-255
+# Convert them into 0-1 range
+
+X_train = X_train / 255.0
+X_test = X_test / 255.0
+
+# ==========================================
+# 4. Reshape Images
+# ==========================================
+
+# CNN expects image format:
+# (samples, height, width, channels)
+
+X_train = X_train.values.reshape(-1, 28, 28, 1)
+X_test = X_test.values.reshape(-1, 28, 28, 1)
+
+# ==========================================
+# 5. One-Hot Encode Labels
+# ==========================================
+
+# Convert labels into categorical format
+
+y_train = to_categorical(y_train, 10)
+y_test = to_categorical(y_test, 10)
+
+# ==========================================
+# 6. Define Class Names
+# ==========================================
+
+class_names = [
+    "T-shirt/top",
+    "Trouser",
+    "Pullover",
+    "Dress",
+    "Coat",
+    "Sandal",
+    "Shirt",
+    "Sneaker",
+    "Bag",
+    "Ankle boot"
+]
+
+# ==========================================
+# 7. Build CNN Model
+# ==========================================
+
+model = Sequential()
+
+# First Convolution Layer
+model.add(
+    Conv2D(
+        filters=32,
+        kernel_size=(3,3),
+        activation='relu',
+        input_shape=(28,28,1)
+    )
+)
+
+# Max Pooling Layer
+model.add(MaxPooling2D(pool_size=(2,2)))
+
+# Second Convolution Layer
+model.add(
+    Conv2D(
+        filters=64,
+        kernel_size=(3,3),
+        activation='relu'
+    )
+)
+
+# Second Pooling Layer
+model.add(MaxPooling2D(pool_size=(2,2)))
+
+# Flatten Layer
+model.add(Flatten())
+
+# Fully Connected Layer
+model.add(Dense(128, activation='relu'))
+
+# Dropout Layer
+model.add(Dropout(0.3))
+
+# Output Layer
+model.add(Dense(10, activation='softmax'))
+
+# ==========================================
+# 8. Compile Model
+# ==========================================
+
+model.compile(
+    optimizer='adam',
+    loss='categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# ==========================================
+# 9. Train Model
+# ==========================================
+
+history = model.fit(
+    X_train,
+    y_train,
+    epochs=5,
+    batch_size=64,
+    validation_split=0.1
+)
+
+# ==========================================
+# 10. Evaluate Model
+# ==========================================
+
+loss, accuracy = model.evaluate(X_test, y_test)
+
+print("\nTest Accuracy:", accuracy)
+
+# ==========================================
+# 11. Predictions
+# ==========================================
+
+y_pred = model.predict(X_test)
+
+# Convert probabilities into class labels
+y_pred_classes = np.argmax(y_pred, axis=1)
+
+# Convert one-hot test labels back
+y_true = np.argmax(y_test, axis=1)
+
+# ==========================================
+# 12. Classification Report
+# ==========================================
+
+print("\nClassification Report:\n")
+
+print(classification_report(y_true, y_pred_classes))
+
+# ==========================================
+# 13. Display Sample Predictions
+# ==========================================
+
+plt.figure(figsize=(10,10))
+
+for i in range(9):
+
+    plt.subplot(3,3,i+1)
+
+    plt.imshow(X_test[i].reshape(28,28), cmap='gray')
+
+    plt.title(
+        "Pred: " + class_names[y_pred_classes[i]]
+    )
+
+    plt.axis('off')
+
+plt.tight_layout()
+plt.show()

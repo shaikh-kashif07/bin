@@ -1,0 +1,75 @@
+%%writefile matrixMul.cu
+
+#include <stdio.h>
+#include <cuda_runtime.h>
+
+#define N 4
+
+__global__ void matrixMul(int A[N][N], int B[N][N], int C[N][N]) {
+
+    int row = threadIdx.y;
+    int col = threadIdx.x;
+
+    int sum = 0;
+
+    for (int k = 0; k < N; k++) {
+        sum += A[row][k] * B[k][col];
+    }
+
+    C[row][col] = sum;
+}
+
+int main() {
+
+    int A[N][N] = {
+        {1, 2, 3, 4},
+        {5, 6, 7, 8},
+        {9, 1, 2, 3},
+        {4, 5, 6, 7}
+    };
+
+    int B[N][N] = {
+        {1, 0, 0, 1},
+        {0, 1, 1, 0},
+        {1, 0, 1, 0},
+        {0, 1, 0, 1}
+    };
+
+    int C[N][N];
+
+    int (*d_A)[N], (*d_B)[N], (*d_C)[N];
+
+    cudaMalloc((void**)&d_A, sizeof(int) * N * N);
+    cudaMalloc((void**)&d_B, sizeof(int) * N * N);
+    cudaMalloc((void**)&d_C, sizeof(int) * N * N);
+
+    cudaMemcpy(d_A, A, sizeof(int) * N * N, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, B, sizeof(int) * N * N, cudaMemcpyHostToDevice);
+
+    dim3 threadsPerBlock(N, N);
+
+    matrixMul<<<1, threadsPerBlock>>>(d_A, d_B, d_C);
+
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(C, d_C, sizeof(int) * N * N, cudaMemcpyDeviceToHost);
+
+    printf("Result Matrix:\n");
+
+    for (int i = 0; i < N; i++) {
+        for (int j = 0; j < N; j++) {
+            printf("%d ", C[i][j]);
+        }
+        printf("\n");
+    }
+
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C);
+
+    return 0;
+}
+
+!nvcc matrixMul.cu -o matrixMul
+
+!./matrixMul
